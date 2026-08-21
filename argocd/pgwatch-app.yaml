@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: 'https://cybertec-postgresql.github.io/pgwatch-charts'
       chart: pgwatch
-      targetRevision: '*'
+      targetRevision: '4.1.0'
       helm:
         releaseName: pgwatch
         valueFiles:
