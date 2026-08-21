@@ -1,0 +1,14 @@
+
+- op: replace
+  path: /spec/groups/0/rules/5
+  value:
+    alert: DiskSpace90percentUsed
+    expr: pgwatch_psutil_disk_percent{customer="buffalo-west"} >= 90
+    for: 5m
+    annotations:
+      summary: "Disk at 90% (Customer Buffalo-west SLA)"
+      description: "Current disk space utilization is at 90% on {{ $labels.dbname }}"
+      priority: P1
+    labels:
+      team: dba
+      namespace: default

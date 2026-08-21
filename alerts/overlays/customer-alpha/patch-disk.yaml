@@ -1,0 +1,14 @@
+
+- op: replace
+  path: /spec/groups/0/rules/5
+  value:
+    alert: DiskSpace70percentUsed
+    expr: pgwatch_psutil_disk_percent{customer="hippo-east"} >= 70
+    for: 5m
+    annotations:
+      summary: "Disk at 70% (Customer hippo-east SLA)"
+      description: "Current disk space utilization is at 70% on {{ $labels.dbname }}"
+      priority: P1
+    labels:
+      team: dba
+      namespace: default

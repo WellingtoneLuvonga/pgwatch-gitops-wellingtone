@@ -1,0 +1,111 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pgwatch-base-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: pgwatch
+      rules:
+
+        - alert: DBInstanceDown
+          expr: pgwatch_instance_up{shutdown!="True"} == 0
+          for: 10m
+          annotations:
+            summary: "DB instance is down"
+            description: "Database instance {{ $labels.dbname }} is down."
+            priority: P1
+          labels:
+            team: dba
+            namespace: default
+
+        - alert: DBInstanceDisappeared
+          expr: pgwatch_instance_up + pgwatch_instance_up offset 4h == 0
+          for: 5m
+          annotations:
+            summary: "DB instance has disappeared"
+            description: "A Database Instance has disappeared"
+            priority: P3
+          labels:
+            team: dba
+            namespace: default
+
+        - alert: ArchiveFailed
+          expr: pgwatch_archiver_is_failing_int != 0
+          for: 5m
+          annotations:
+            summary: "Archive failed"
+            description: "WAL archiving is failing on {{ $labels.dbname }}"
+            priority: P3
+          labels:
+            team: dba
+            namespace: default
+
+        - alert: AutovacuumDisabled
+          expr: pgwatch_autovacuum_enabled < 1
+          for: 3m
+          annotations:
+            summary: "Autovacuum disabled"
+            description: "Autovacuum is not running on {{ $labels.dbname }}"
+            priority: P3
+          labels:
+            team: dba
+            namespace: default
+
+        - alert: LowCommitRatio
+          expr: pgwatch_commitratio_commit_ratio <= 50
+          for: 10m
+          annotations:
+            summary: "Low commit ratio"
+            description: "Commit ratio is lower than 50% for 10 minutes on {{ $labels.dbname }}"
+            priority: P3
+          labels:
+            team: dba
+            namespace: default
+
+        - alert: DiskSpace85percentUsed
+          expr: pgwatch_psutil_disk_percent >= 85
+          for: 5m
+          annotations:
+            summary: "Disk at 85%"
+            description: "Current disk space utilization is at 85% on {{ $labels.dbname }}"
+            priority: P1
+          labels:
+            team: dba
+            namespace: default
+
+        - alert: TooMuchRAMUtilized
+          expr: pgwatch_psutil_mem_percent > 90
+          for: 15m
+          annotations:
+            summary: "RAM Used > 90%"
+            description: "RAM utilization is above 90% on {{ $labels.dbname }}"
+            priority: P1
+          labels:
+            team: dba
+            namespace: default
+
+        - alert: ReplicationLagTooHigh
+          expr: (min_over_time(pgwatch_replication_write_lag_b[5m]) + min_over_time(pgwatch_replication_flush_lag_b[5m]) + min_over_time(pgwatch_replication_replay_lag_b[5m])) > 268435456
+          for: 10m
+          annotations:
+            summary: "Replication Lag > 256MB"
+            description: "Replication is lagging behind on {{ $labels.dbname }}"
+            priority: P3
+          labels:
+            team: dba
+            namespace: default
+
+        - alert: PostgresReplicationSlotHugeLag
+          expr: pgwatch_replication_slot_pg_wal_lsn_diff_bytes > 5000000000
+          for: 5m
+          annotations:
+            summary: "Slot retaining critical WAL on {{ $labels.customer }}"
+            description: "The slot '{{ $labels.tag_slot_name }}' on {{ $labels.hostname }} is retaining {{ $value | humanize1024 }}B of WAL. This prevents cleanup and will fill the disk."
+            priority: P3
+          labels:
+            severity: warning
+            team: dba
+            namespace: default

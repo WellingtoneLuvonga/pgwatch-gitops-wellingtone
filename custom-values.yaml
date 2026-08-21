@@ -1,0 +1,21 @@
+pgwatch:
+  postgres:
+    enablePgSink: false
+    # Dummy credentials so the chart generates pgwatch-postgresql-secret-pgwatch
+    credentials:
+      username: "pgwatch"
+      password: "dummyPassword123!"
+    adminCredentials:
+      password: "dummyAdminPassword123!"
+  prometheus:
+    enablePromSink: true
+
+    newPrometheus:
+      createPrometheus: false
+
+  grafana:
+    enableGrafana: false
+
+  sources:
+    files: {} # Leave empty to avoid creating plain ConfigMaps
+
