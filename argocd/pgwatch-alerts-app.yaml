@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pgwatch-alerts
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
+    targetRevision: main
+    path: alerts/overlays/customer-alpha
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pgwatch-core
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: 'https://cybertec-postgresql.github.io/helm-charts'
+      chart: pgwatch
+      targetRevision: '*'
+      helm:
+        valueFiles:
+          - $git-repo/custom-values.yaml
+    - repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
+      targetRevision: main
+      ref: git-repo
+      directory:
+        include: '{sealed-sources.yaml,pgwatch-servicemonitor.yaml,patroni-global-podmonitor.yaml}'
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: pgwatch
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
