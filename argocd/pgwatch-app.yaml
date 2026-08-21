@@ -6,12 +6,14 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: 'https://cybertec-postgresql.github.io/helm-charts'
+    # Source 1: Correct official pgwatch Helm Chart repository
+    - repoURL: 'https://cybertec-postgresql.github.io/pgwatch-charts'
       chart: pgwatch
       targetRevision: '*'
       helm:
         valueFiles:
           - $git-repo/custom-values.yaml
+    # Source 2: Your GitHub repository containing values and SealedSecrets
     - repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
       targetRevision: main
       ref: git-repo
