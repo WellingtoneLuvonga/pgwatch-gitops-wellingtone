@@ -31,9 +31,10 @@ spec:
   ignoreDifferences:
     - group: apps
       kind: Deployment
-      jsonPointers:
-        - /spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt
+      jqPathExpressions:
+        - .spec.template.metadata.annotations
     - group: apps
       kind: StatefulSet
-      jsonPointers:
-        - /spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt
+      jqPathExpressions:
+        - .spec.template.metadata.annotations
+        - .spec.volumeClaimTemplates[].status
