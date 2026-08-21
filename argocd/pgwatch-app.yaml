@@ -6,14 +6,12 @@ metadata:
 spec:
   project: default
   sources:
-    # Source 1: Correct official pgwatch Helm Chart repository
     - repoURL: 'https://cybertec-postgresql.github.io/pgwatch-charts'
       chart: pgwatch
       targetRevision: '*'
       helm:
         valueFiles:
           - $git-repo/custom-values.yaml
-    # Source 2: Your GitHub repository containing values and SealedSecrets
     - repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
       targetRevision: main
       ref: git-repo
@@ -28,3 +26,12 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt
