@@ -26,15 +26,5 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
-      - RespectIgnoreDifferences=true
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      jqPathExpressions:
-        - .spec.template.metadata.annotations
-    - group: apps
-      kind: StatefulSet
-      jqPathExpressions:
-        - .spec.template.metadata.annotations
-        - .spec.volumeClaimTemplates[].status
+      - Force=true
+      - Replace=true
