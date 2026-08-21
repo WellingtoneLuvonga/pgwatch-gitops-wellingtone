@@ -10,6 +10,7 @@ spec:
       chart: pgwatch
       targetRevision: '*'
       helm:
+        releaseName: pgwatch
         valueFiles:
           - $git-repo/custom-values.yaml
     - repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
@@ -26,5 +27,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - Force=true
-      - Replace=true
