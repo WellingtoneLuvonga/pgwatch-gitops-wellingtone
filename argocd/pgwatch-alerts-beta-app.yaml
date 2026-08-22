@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: pgwatch-alerts-beta
+  name: customer-beta
   namespace: argocd
 spec:
   project: default
