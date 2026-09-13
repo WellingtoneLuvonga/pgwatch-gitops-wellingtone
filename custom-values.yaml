@@ -12,17 +12,25 @@ pgwatch:
       createPrometheus: false
   grafana:
     enableGrafana: false
-
   sources:
-    files: {} # Avoid creating the default plain ConfigMap
-
+    files: {}
   extraVolumes:
     - name: pgwatch-sources-volume
       secret:
         secretName: pgwatch-sources-secret
-
   extraVolumeMounts:
     - name: pgwatch-sources-volume
       mountPath: /tmp/pgwatch-sources/sources.yaml
       subPath: sources.yaml
       readOnly: true
+
+extraVolumes:
+  - name: pgwatch-sources-volume
+    secret:
+      secretName: pgwatch-sources-secret
+
+extraVolumeMounts:
+  - name: pgwatch-sources-volume
+    mountPath: /tmp/pgwatch-sources/sources.yaml
+    subPath: sources.yaml
+    readOnly: true
