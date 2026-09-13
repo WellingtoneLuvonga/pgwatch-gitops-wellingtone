@@ -1,7 +1,6 @@
 pgwatch:
   postgres:
     enablePgSink: false
-    # Dummy credentials so the chart generates pgwatch-postgresql-secret-pgwatch
     credentials:
       username: "pgwatch"
       password: "dummyPassword123!"
@@ -9,17 +8,14 @@ pgwatch:
       password: "dummyAdminPassword123!"
   prometheus:
     enablePromSink: true
-
     newPrometheus:
       createPrometheus: false
-
   grafana:
     enableGrafana: false
 
   sources:
-    files: {} # Leave empty to avoid creating plain ConfigMaps
+    files: {} # Avoid creating the default plain ConfigMap
 
-  # Mount the unsealed SealedSecret into the pgwatch container
   extraVolumes:
     - name: pgwatch-sources-volume
       secret:
@@ -27,6 +23,6 @@ pgwatch:
 
   extraVolumeMounts:
     - name: pgwatch-sources-volume
-      mountPath: /etc/pgwatch3/sources.yaml
+      mountPath: /tmp/pgwatch-sources/sources.yaml
       subPath: sources.yaml
       readOnly: true
