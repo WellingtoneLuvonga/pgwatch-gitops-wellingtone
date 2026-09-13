@@ -16,6 +16,7 @@ spec:
     - repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
       targetRevision: main
       ref: git-repo
+      path: '.'
       directory:
         include: '{sealed-sources.yaml,pgwatch-servicemonitor.yaml,patroni-global-podmonitor.yaml}'
   destination:
