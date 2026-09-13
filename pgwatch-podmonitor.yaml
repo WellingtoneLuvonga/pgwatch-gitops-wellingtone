@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: pgwatch
+  namespace: pgwatch
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pgwatch
+  podMetricsEndpoints:
+    - targetPort: 9188
+      path: /metrics
+      interval: 15s

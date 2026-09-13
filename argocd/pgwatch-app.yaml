@@ -18,7 +18,7 @@ spec:
       ref: git-repo
       path: '.'
       directory:
-        include: '{sealed-sources.yaml,pgwatch-servicemonitor.yaml,patroni-global-podmonitor.yaml}'
+        include: '{sealed-sources.yaml,pgwatch-podmonitor.yaml,patroni-global-podmonitor.yaml}'
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: pgwatch
