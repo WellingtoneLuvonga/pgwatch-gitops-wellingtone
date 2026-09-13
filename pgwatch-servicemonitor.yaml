@@ -2,20 +2,17 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: pgwatch
-  namespace: monitoring
+  namespace: pgwatch
   labels:
-    release: kube-prometheus-stack
+    release: prometheus-stack
 spec:
   namespaceSelector:
     matchNames:
       - pgwatch
   selector:
     matchLabels:
-      app.kubernetes.io/component: pgwatch
       app.kubernetes.io/name: pgwatch
   endpoints:
-    - port: prometheus
+    - port: metrics
       interval: 15s
       path: /metrics
-
-
