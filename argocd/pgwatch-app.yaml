@@ -18,6 +18,7 @@ spec:
       ref: git-repo
       path: '.'
       directory:
+        recurse: true
         include: '*.yaml'
         exclude: 'custom-values.yaml'
     # Include Base Prometheus Rules
