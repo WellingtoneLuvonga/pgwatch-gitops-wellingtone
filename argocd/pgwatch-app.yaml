@@ -20,6 +20,10 @@ spec:
       directory:
         include: '*.yaml'
         exclude: 'custom-values.yaml'
+    # Include Base Prometheus Rules
+    - repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
+      targetRevision: main
+      path: 'base'
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: pgwatch

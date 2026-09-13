@@ -1,0 +1,31 @@
+# argocd/customer-rules-appset.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: customer-prometheus-rules
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
+        revision: main
+        directories:
+          # Scans overlays/customer-alpha/prod, overlays/customer-beta/staging, etc.
+          - path: overlays/*/*
+  template:
+    metadata:
+      # Generates app names like: alert-rules-customer-alpha-prod
+      name: 'alert-rules-{{path[1]}}-{{path.basename}}'
+    spec:
+      project: default
+      source:
+        repoURL: 'https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git'
+        targetRevision: main
+        path: '{{path}}' # Points Argo CD to the exact overlay directory
+      destination:
+        server: 'https://kubernetes.default.svc'
+        namespace: pgwatch
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
