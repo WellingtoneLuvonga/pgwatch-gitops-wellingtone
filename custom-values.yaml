@@ -1,4 +1,13 @@
 pgwatch:
+  service:
+    ports:
+      - name: http
+        port: 8080
+        targetPort: 8080
+      - name: metrics
+        port: 9188
+        targetPort: 9188
+
   postgres:
     enablePgSink: false
     credentials:
