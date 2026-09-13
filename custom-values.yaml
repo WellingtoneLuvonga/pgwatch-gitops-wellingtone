@@ -12,25 +12,22 @@ pgwatch:
       createPrometheus: false
   grafana:
     enableGrafana: false
+
+  # The chart will mount this block directly into /tmp/pgwatch-sources/sources.yaml
   sources:
-    files: {}
-  extraVolumes:
-    - name: pgwatch-sources-volume
-      secret:
-        secretName: pgwatch-sources-secret
-  extraVolumeMounts:
-    - name: pgwatch-sources-volume
-      mountPath: /tmp/pgwatch-sources/sources.yaml
-      subPath: sources.yaml
-      readOnly: true
+    files:
+      sources.yaml: |
+        - name: postgres_wellingtone
+          conn_str: ${POSTGRES_WELLINGTONE_CONN}
+          preset_metrics: full
+          is_enabled: true
+          custom_tags:
+            region: localhost
+            role: primary
+            cluster: localhost-cluster
+            customer: wellingtone-local
 
-extraVolumes:
-  - name: pgwatch-sources-volume
-    secret:
-      secretName: pgwatch-sources-secret
-
-extraVolumeMounts:
-  - name: pgwatch-sources-volume
-    mountPath: /tmp/pgwatch-sources/sources.yaml
-    subPath: sources.yaml
-    readOnly: true
+  # Inject the secret keys as environment variables into the pod
+  envFrom:
+    - secretRef:
+        name: pgwatch-sources-secret
