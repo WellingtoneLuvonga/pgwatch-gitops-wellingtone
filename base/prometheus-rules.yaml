@@ -4,7 +4,7 @@ metadata:
   name: pgwatch-base-alerts
   namespace: monitoring
   labels:
-    release: kube-prometheus-stack
+    release: prometheus-stack
 spec:
   groups:
     - name: pgwatch
