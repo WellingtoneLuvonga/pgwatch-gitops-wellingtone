@@ -22,7 +22,7 @@ pgwatch:
   grafana:
     enableGrafana: false
   podAnnotations:
-    secret-version: "v3"
+    reloader.stakater.com/auto: "true"
 
   # The chart will mount this block directly into /tmp/pgwatch-sources/sources.yaml
   sources:
