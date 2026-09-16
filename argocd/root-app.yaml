@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: pgwatch-core
+  name: pgwatch-root-app
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,13 +10,10 @@ spec:
   source:
     repoURL: https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git
     targetRevision: HEAD
-    path: .
-    helm:
-      valueFiles:
-        - custom-values.yaml
+    path: argocd
   destination:
     server: https://kubernetes.default.svc
-    namespace: pgwatch
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true
