@@ -36,6 +36,16 @@ pgwatch:
             cluster: localhost-cluster
             customer: wellingtone-local
 
+        - name: postgres_customer_beta
+          conn_str: ${POSTGRES_CUSTOMER_BETA_CONN}
+          preset_metrics: full
+          is_enabled: true
+          custom_tags:
+            region: localhost
+            role: primary
+            cluster: cypex-cluster
+            customer: customer-beta
+
   # Inject the secret keys as environment variables into the pod
   envFrom:
     - secretRef:
