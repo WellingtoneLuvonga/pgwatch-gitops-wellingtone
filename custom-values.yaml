@@ -49,27 +49,6 @@ pgwatch:
             cluster: cypex-cluster
             customer: customer-beta
 
-        - name: postgres_customer_gamma
-          conn_str: ${POSTGRES_CUSTOMER_GAMMA_CONN}
-          preset_metrics: full
-          is_enabled: true
-          custom_tags:
-            region: localhost
-            role: primary
-            cluster: test-cluster
-            customer: customer-gamma
-
-        - name: postgres_customer_delta
-          conn_str: ${POSTGRES_CUSTOMER_DELTA_CONN}
-          preset_metrics: full
-          is_enabled: true
-          custom_tags:
-            region: localhost
-            role: primary
-            cluster: test-cluster-2
-            customer: customer-delta
-
-
 
   # Inject the secret keys as environment variables into the pod
   envFrom:
