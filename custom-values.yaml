@@ -40,15 +40,15 @@ pgwatch:
   sources:
     files:
       sources.yaml: |
-        - name: postgres_wellingtone
-          conn_str: ${POSTGRES_WELLINGTONE_CONN}
+        - name: postgres_customer_beta
+          conn_str: ${POSTGRES_CUSTOMER_ALPHA_CONN}
           preset_metrics: full
           is_enabled: true
           custom_tags:
             region: localhost
             role: primary
-            cluster: localhost-cluster
-            customer: wellingtone-local
+            cluster: test-1
+            customer: customer-alpha
 
         - name: postgres_customer_beta
           conn_str: ${POSTGRES_CUSTOMER_BETA_CONN}
@@ -57,7 +57,7 @@ pgwatch:
           custom_tags:
             region: localhost
             role: primary
-            cluster: cypex-cluster
+            cluster: test-2
             customer: customer-beta
 
 
