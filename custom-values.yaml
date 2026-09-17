@@ -80,6 +80,16 @@ pgwatch:
             cluster: test-cluster-3
             customer: customer-epsilon
 
+        - name: postgres_customer_zeta
+          conn_str: ${POSTGRES_CUSTOMER_ZETA_CONN}
+          preset_metrics: full
+          is_enabled: true
+          custom_tags:
+            region: localhost
+            role: primary
+            cluster: test-cluster-4
+            customer: customer-zeta
+
   # Inject the secret keys as environment variables into the pod
   envFrom:
     - secretRef:
