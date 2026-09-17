@@ -39,7 +39,7 @@ spec:
                     cat <<EOF >> /tmp/sources-dynamic.yaml
               - name: crunchy_${NS}_${CLUSTER}
                 conn_str: ${URI}
-                preset_metrics: full
+                preset_metrics: minimal
                 is_enabled: true
                 custom_tags:
                   environment: dynamic-crunchy
