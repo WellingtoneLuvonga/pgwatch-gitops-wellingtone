@@ -21,6 +21,8 @@ pgwatch:
       createPrometheus: false
   grafana:
     enableGrafana: false
+  annotations:
+    secret.reloader.stakater.com/reload: "pgwatch-sources-secret"
   podAnnotations:
     reloader.stakater.com/auto: "true"
 
