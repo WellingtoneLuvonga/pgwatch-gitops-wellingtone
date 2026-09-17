@@ -21,10 +21,9 @@ pgwatch:
       createPrometheus: false
   grafana:
     enableGrafana: false
-annotations:
-  secret.reloader.stakater.com/reload: "pgwatch-sources-secret"
-podAnnotations:
-  reloader.stakater.com/auto: "true"
+  podAnnotations:
+    reloader.stakater.com/auto: "true"
+    secret.reloader.stakater.com/reload: "pgwatch-sources-secret"
 
   # The chart will mount this block directly into /tmp/pgwatch-sources/sources.yaml
   sources:
