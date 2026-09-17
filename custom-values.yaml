@@ -70,6 +70,16 @@ pgwatch:
             cluster: test-cluster-2
             customer: customer-delta
 
+        - name: postgres_customer_epsilon
+          conn_str: ${POSTGRES_CUSTOMER_EPSILON_CONN}
+          preset_metrics: full
+          is_enabled: true
+          custom_tags:
+            region: localhost
+            role: primary
+            cluster: test-cluster-3
+            customer: customer-epsilon
+
   # Inject the secret keys as environment variables into the pod
   envFrom:
     - secretRef:
