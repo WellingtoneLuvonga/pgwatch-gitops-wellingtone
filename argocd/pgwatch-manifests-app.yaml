@@ -12,7 +12,7 @@ spec:
     targetRevision: HEAD
     path: .
     directory:
-      include: '{sealed-sources.yaml,pgwatch-podmonitor.yaml,pgwatch-discovery-rbac.yaml}'
+      include: '{sealed-sources.yaml,pgwatch-podmonitor.yaml,pgwatch-discovery-rbac.yaml,pgwatch-crunchy-watcher.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: pgwatch
