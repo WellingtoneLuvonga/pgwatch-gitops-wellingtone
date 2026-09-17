@@ -1,4 +1,15 @@
 pgwatch:
+  extraVolumes:
+    - name: pgwatch-crunchy-sources
+      configMap:
+        name: pgwatch-crunchy-sources-cm
+        optional: true
+
+  extraVolumeMounts:
+    - name: pgwatch-crunchy-sources
+      mountPath: /tmp/pgwatch-sources/sources-dynamic.yaml
+      subPath: sources-dynamic.yaml
+
   service:
     ports:
       - name: http
