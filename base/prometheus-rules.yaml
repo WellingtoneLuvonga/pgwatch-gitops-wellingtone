@@ -1,13 +1,13 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: pgwatch-base-alerts
+  name: pgwatch-general
   namespace: monitoring
   labels:
     release: prometheus-stack
 spec:
   groups:
-    - name: pgwatch
+    - name: pgwatch-general
       rules:
 
         - alert: DBInstanceDown
