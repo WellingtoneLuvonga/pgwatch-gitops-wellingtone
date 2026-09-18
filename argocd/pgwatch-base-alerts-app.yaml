@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: pgwatch-manifests
+  name: pgwatch-base-alerts
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,12 +10,10 @@ spec:
   source:
     repoURL: https://github.com/WellingtoneLuvonga/pgwatch-gitops-wellingtone.git
     targetRevision: HEAD
-    path: .
-    directory:
-      include: '{sealed-sources.yaml,pgwatch-podmonitor.yaml,pgwatch-discovery-rbac.yaml,pgwatch-crunchy-watcher.yaml,pgwatch-base-alerts-app.yaml}'
+    path: base
   destination:
     server: https://kubernetes.default.svc
-    namespace: pgwatch
+    namespace: monitoring
   syncPolicy:
     automated:
       prune: true
