@@ -54,19 +54,20 @@ spec:
                   fi
                 done
 
-                # 2. Remote Cluster Discovery (Direct Subnet Routing)
+                # 2. Remote Cluster Discovery (10.0.0.151 WireGuard IP)
                 if [ -n "$REMOTE_TOKEN" ]; then
-                  REMOTE_SECRETS=$(kubectl --server=https://192.168.122.197:6443 --token="$REMOTE_TOKEN" --insecure-skip-tls-verify get secrets -A -l postgres-operator.crunchydata.com/cluster --no-headers -o jsonpath='{range .items[*]}{.metadata.namespace}{":"}{.metadata.name}{"\n"}{end}' 2>/dev/null)
+                  REMOTE_SECRETS=$(kubectl --server=https://10.0.0.151:6443 --token="$REMOTE_TOKEN" --insecure-skip-tls-verify get secrets -A -l postgres-operator.crunchydata.com/cluster --no-headers -o jsonpath='{range .items[*]}{.metadata.namespace}{":"}{.metadata.name}{"\n"}{end}' 2>/dev/null)
                   for item in $REMOTE_SECRETS; do
                     NS=$(echo $item | cut -d: -f1)
                     SEC=$(echo $item | cut -d: -f2)
-                    # Fetch URI directly from remote secrets
-                    URI=$(kubectl --server=https://192.168.122.197:6443 --token="$REMOTE_TOKEN" --insecure-skip-tls-verify get secret $SEC -n $NS -o jsonpath='{.data.uri}' 2>/dev/null | base64 -d 2>/dev/null)
+                    URI=$(kubectl --server=https://10.0.0.151:6443 --token="$REMOTE_TOKEN" --insecure-skip-tls-verify get secret $SEC -n $NS -o jsonpath='{.data.uri}' 2>/dev/null | base64 -d 2>/dev/null)
                     if [ -n "$URI" ]; then
                       CLUSTER=$(echo $SEC | sed 's/-pguser-.*//')
+                      # Map internal K8s DNS to reachable WireGuard host IP
+                      EXT_URI=$(echo $URI | sed -E 's/@[^:]+:5432/@10.0.0.151:5432/')
                       cat <<EOF >> /tmp/sources-dynamic.yaml
               - name: crunchy_cks_lab_${NS}_${CLUSTER}
-                conn_str: ${URI}
+                conn_str: ${EXT_URI}
                 preset_metrics: minimal
                 is_enabled: true
                 custom_tags:
