@@ -79,6 +79,6 @@ spec:
                   done
                 fi
 
-                kubectl patch configmap pgwatch-crunchy-sources-cm -n pgwatch -p "{\"data\":{\"sources-dynamic.yaml\":$(jq -Rs . /tmp/sources-dynamic.yaml)}}" 2>/dev/null
+                kubectl patch configmap pgwatch-sources-cm -n pgwatch -p "{\"data\":{\"sources-dynamic.yaml\":$(jq -Rs . /tmp/sources-dynamic.yaml)}}" 2>/dev/null
                 sleep 20
               done
