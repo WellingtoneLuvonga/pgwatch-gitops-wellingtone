@@ -34,7 +34,6 @@ spec:
               EOF
 
                 if [ -n "$TIMO03T_TOKEN" ]; then
-                  # Fetch secret resource names directly without complex jsonpath formatting
                   REMOTE_SECRETS=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secrets -n dev -l postgres-operator.crunchydata.com/cluster -o name 2>/dev/null | grep 'pguser')
 
                   for SEC_NAME in $REMOTE_SECRETS; do
@@ -68,6 +67,10 @@ spec:
                   done
                 fi
 
-                kubectl patch configmap pgwatch-sources-cm -n pgwatch -p "{\"data\":{\"sources-dynamic.yaml\":$(jq -Rs . /tmp/sources-dynamic.yaml)}}" 2>/dev/null
+                # Declarative apply prevents JSON escape errors on passwords
+                kubectl create configmap pgwatch-sources-cm -n pgwatch \
+                  --from-file=sources-dynamic.yaml=/tmp/sources-dynamic.yaml \
+                  --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null
+
                 sleep 20
               done
