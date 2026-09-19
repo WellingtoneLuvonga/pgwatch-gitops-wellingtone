@@ -35,40 +35,29 @@ spec:
 
                 if [ -n "$TIMO03T_TOKEN" ]; then
                   API_URL="https://api.timo03t.sbb-aws-test.net:6443"
-                  EXT_HOST="api.timo03t.sbb-aws-test.net"
 
+                  # Bulk fetch discrete secret keys in a single API call (POSIX safe)
                   kubectl --server="$API_URL" --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify \
                     get secrets -n dev -l postgres-operator.crunchydata.com/cluster \
                     -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.data.user}{"|"}{.data.password}{"|"}{.data.host}{"|"}{.data.port}{"|"}{.data.dbname}{"\n"}{end}' 2>/dev/null > /tmp/raw_secrets.txt
-
-                  kubectl --server="$API_URL" --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify \
-                    get svc -n dev -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.spec.ports[0].nodePort}{"\n"}{end}' 2>/dev/null > /tmp/raw_services.txt
 
                   grep '\-pguser\-' /tmp/raw_secrets.txt | while IFS='|' read -r SEC U_B64 P_B64 H_B64 PORT_B64 DB_B64; do
                     NS="dev"
                     U=$(echo "$U_B64" | base64 -d 2>/dev/null)
                     P=$(echo "$P_B64" | base64 -d 2>/dev/null)
+                    H=$(echo "$H_B64" | base64 -d 2>/dev/null)
+                    PORT=$(echo "$PORT_B64" | base64 -d 2>/dev/null)
                     DB=$(echo "$DB_B64" | base64 -d 2>/dev/null)
+
+                    PORT=${PORT:-5432}
                     DB=${DB:-postgres}
 
-                    CLUSTER=$(echo "$SEC" | sed 's/-pguser-.*//')
-                    USER_TAG=$(echo "$SEC" | sed 's/.*-pguser-//')
-
-                    NODE_PORT=$(grep "^${CLUSTER}-np|" /tmp/raw_services.txt | cut -d'|' -f2)
-
-                    if [ -n "$NODE_PORT" ]; then
-                      TARGET_HOST="$EXT_HOST"
-                      TARGET_PORT="$NODE_PORT"
-                    else
-                      TARGET_HOST=$(echo "$H_B64" | base64 -d 2>/dev/null)
-                      TARGET_PORT=$(echo "$PORT_B64" | base64 -d 2>/dev/null)
-                      TARGET_PORT=${TARGET_PORT:-5432}
-                    fi
-
-                    if [ -n "$U" ] && [ -n "$P" ] && [ -n "$TARGET_HOST" ]; then
+                    if [ -n "$U" ] && [ -n "$P" ] && [ -n "$H" ]; then
+                      CLUSTER=$(echo "$SEC" | sed 's/-pguser-.*//')
+                      USER_TAG=$(echo "$SEC" | sed 's/.*-pguser-//')
                       cat <<EOF >> /tmp/sources-dynamic.yaml
               - name: crunchy_timo03t_${NS}_${CLUSTER}_${USER_TAG}
-                conn_str: postgresql://${U}:${P}@${TARGET_HOST}:${TARGET_PORT}/${DB}
+                conn_str: postgresql://${U}:${P}@${H}:${PORT}/${DB}
                 preset_metrics: minimal
                 is_enabled: true
                 custom_tags:
@@ -81,6 +70,7 @@ spec:
                   done
                 fi
 
+                # Declarative apply safely updates ConfigMap
                 kubectl create configmap pgwatch-sources-cm -n pgwatch \
                   --from-file=sources-dynamic.yaml=/tmp/sources-dynamic.yaml \
                   --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null
