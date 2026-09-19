@@ -36,7 +36,7 @@ spec:
                 if [ -n "$TIMO03T_TOKEN" ]; then
                   API_URL="https://api.timo03t.sbb-aws-test.net:6443"
 
-                  # Bulk fetch discrete secret keys in a single API call (POSIX safe)
+                  # Bulk fetch secrets (POSIX safe)
                   kubectl --server="$API_URL" --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify \
                     get secrets -n dev -l postgres-operator.crunchydata.com/cluster \
                     -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.data.user}{"|"}{.data.password}{"|"}{.data.host}{"|"}{.data.port}{"|"}{.data.dbname}{"\n"}{end}' 2>/dev/null > /tmp/raw_secrets.txt
@@ -52,12 +52,15 @@ spec:
                     PORT=${PORT:-5432}
                     DB=${DB:-postgres}
 
+                    # Escape single quotes for key-value string safety
+                    P_ESCAPED=$(echo "$P" | sed "s/'/\\\\'/g")
+
                     if [ -n "$U" ] && [ -n "$P" ] && [ -n "$H" ]; then
                       CLUSTER=$(echo "$SEC" | sed 's/-pguser-.*//')
                       USER_TAG=$(echo "$SEC" | sed 's/.*-pguser-//')
                       cat <<EOF >> /tmp/sources-dynamic.yaml
               - name: crunchy_timo03t_${NS}_${CLUSTER}_${USER_TAG}
-                conn_str: postgresql://${U}:${P}@${H}:${PORT}/${DB}
+                conn_str: "host=${H} port=${PORT} user=${U} password='${P_ESCAPED}' dbname=${DB} sslmode=disable"
                 preset_metrics: minimal
                 is_enabled: true
                 custom_tags:
@@ -70,7 +73,6 @@ spec:
                   done
                 fi
 
-                # Declarative apply safely updates ConfigMap
                 kubectl create configmap pgwatch-sources-cm -n pgwatch \
                   --from-file=sources-dynamic.yaml=/tmp/sources-dynamic.yaml \
                   --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null
