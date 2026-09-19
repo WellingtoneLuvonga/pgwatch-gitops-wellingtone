@@ -34,32 +34,44 @@ spec:
               EOF
 
                 if [ -n "$TIMO03T_TOKEN" ]; then
-                  # 1. Fetch ALL secrets in a single API call (~1 second)
-                  kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 \
-                    --token="$TIMO03T_TOKEN" \
-                    --insecure-skip-tls-verify \
-                    get secrets -n dev -l postgres-operator.crunchydata.com/cluster -o json > /tmp/all_secrets.json 2>/dev/null
+                  API_URL="https://api.timo03t.sbb-aws-test.net:6443"
+                  EXT_HOST="api.timo03t.sbb-aws-test.net"
 
-                  # 2. Extract -pguser- secrets and parse local JSON
-                  jq -c '.items[] | select(.metadata.name | contains("-pguser-"))' /tmp/all_secrets.json 2>/dev/null | while read -r item; do
-                    SEC=$(echo "$item" | jq -r '.metadata.name')
-                    NS=$(echo "$item" | jq -r '.metadata.namespace')
+                  # 1. Fetch all secrets in 1 bulk call
+                  kubectl --server="$API_URL" --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify \
+                    get secrets -n dev -l postgres-operator.crunchydata.com/cluster \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.data.user}{"\t"}{.data.password}{"\t"}{.data.host}{"\t"}{.data.port}{"\t"}{.data.dbname}{"\n"}{end}' 2>/dev/null > /tmp/raw_secrets.txt
 
-                    U=$(echo "$item" | jq -r '.data.user // ""' | base64 -d 2>/dev/null)
-                    P=$(echo "$item" | jq -r '.data.password // ""' | base64 -d 2>/dev/null)
-                    H=$(echo "$item" | jq -r '.data.host // ""' | base64 -d 2>/dev/null)
-                    PORT=$(echo "$item" | jq -r '.data.port // ""' | base64 -d 2>/dev/null)
-                    DB=$(echo "$item" | jq -r '.data.dbname // ""' | base64 -d 2>/dev/null)
+                  # 2. Fetch all NodePorts in 1 bulk call
+                  kubectl --server="$API_URL" --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify \
+                    get svc -n dev -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.ports[0].nodePort}{"\n"}{end}' 2>/dev/null > /tmp/raw_services.txt
 
-                    PORT=${PORT:-5432}
+                  grep '\-pguser\-' /tmp/raw_secrets.txt | while IFS=$'\t' read -r SEC U_B64 P_B64 H_B64 PORT_B64 DB_B64; do
+                    NS="dev"
+                    U=$(echo "$U_B64" | base64 -d 2>/dev/null)
+                    P=$(echo "$P_B64" | base64 -d 2>/dev/null)
+                    DB=$(echo "$DB_B64" | base64 -d 2>/dev/null)
                     DB=${DB:-postgres}
 
-                    if [ -n "$U" ] && [ -n "$P" ] && [ -n "$H" ]; then
-                      CLUSTER=$(echo "$SEC" | sed 's/-pguser-.*//')
-                      USER_TAG=$(echo "$SEC" | sed 's/.*-pguser-//')
+                    CLUSTER=$(echo "$SEC" | sed 's/-pguser-.*//')
+                    USER_TAG=$(echo "$SEC" | sed 's/.*-pguser-//')
+
+                    # Extract NodePort mapped to this cluster
+                    NODE_PORT=$(grep "^${CLUSTER}-np"$'\t' /tmp/raw_services.txt | cut -f2)
+
+                    if [ -n "$NODE_PORT" ]; then
+                      TARGET_HOST="$EXT_HOST"
+                      TARGET_PORT="$NODE_PORT"
+                    else
+                      TARGET_HOST=$(echo "$H_B64" | base64 -d 2>/dev/null)
+                      TARGET_PORT=$(echo "$PORT_B64" | base64 -d 2>/dev/null)
+                      TARGET_PORT=${TARGET_PORT:-5432}
+                    fi
+
+                    if [ -n "$U" ] && [ -n "$P" ] && [ -n "$TARGET_HOST" ]; then
                       cat <<EOF >> /tmp/sources-dynamic.yaml
               - name: crunchy_timo03t_${NS}_${CLUSTER}_${USER_TAG}
-                conn_str: postgresql://${U}:${P}@${H}:${PORT}/${DB}
+                conn_str: postgresql://${U}:${P}@${TARGET_HOST}:${TARGET_PORT}/${DB}
                 preset_metrics: minimal
                 is_enabled: true
                 custom_tags:
@@ -72,7 +84,7 @@ spec:
                   done
                 fi
 
-                # 3. Apply ConfigMap instantaneously
+                # 3. Declarative apply avoids special character escaping issues
                 kubectl create configmap pgwatch-sources-cm -n pgwatch \
                   --from-file=sources-dynamic.yaml=/tmp/sources-dynamic.yaml \
                   --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null
