@@ -35,11 +35,11 @@ spec:
 
                 # OpenShift timo03t Remote Discovery
                 if [ -n "$TIMO03T_TOKEN" ]; then
-                  REMOTE_SECRETS=$(kubectl --server=https://api-timo03t-sbb-aws-test-net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secrets -n dev -l postgres-operator.crunchydata.com/cluster --no-headers -o jsonpath='{range .items[*]}{.metadata.namespace}{":"}{.metadata.name}{"\n"}{end}' 2>/dev/null)
+                  REMOTE_SECRETS=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secrets -n dev -l postgres-operator.crunchydata.com/cluster --no-headers -o jsonpath='{range .items[*]}{.metadata.namespace}{":"}{.metadata.name}{"\n"}{end}' 2>/dev/null)
                   for item in $REMOTE_SECRETS; do
                     NS=$(echo $item | cut -d: -f1)
                     SEC=$(echo $item | cut -d: -f2)
-                    URI=$(kubectl --server=https://api-timo03t-sbb-aws-test-net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secret $SEC -n $NS -o jsonpath='{.data.uri}' 2>/dev/null | base64 -d 2>/dev/null)
+                    URI=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secret $SEC -n $NS -o jsonpath='{.data.uri}' 2>/dev/null | base64 -d 2>/dev/null)
                     if [ -n "$URI" ]; then
                       CLUSTER=$(echo $SEC | sed 's/-pguser-.*//')
                       cat <<EOF >> /tmp/sources-dynamic.yaml
