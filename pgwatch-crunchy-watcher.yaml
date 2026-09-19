@@ -36,7 +36,6 @@ spec:
                 if [ -n "$TIMO03T_TOKEN" ]; then
                   API_URL="https://api.timo03t.sbb-aws-test.net:6443"
 
-                  # Bulk fetch secrets (POSIX safe)
                   kubectl --server="$API_URL" --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify \
                     get secrets -n dev -l postgres-operator.crunchydata.com/cluster \
                     -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.data.user}{"|"}{.data.password}{"|"}{.data.host}{"|"}{.data.port}{"|"}{.data.dbname}{"\n"}{end}' 2>/dev/null > /tmp/raw_secrets.txt
@@ -52,7 +51,7 @@ spec:
                     PORT=${PORT:-5432}
                     DB=${DB:-postgres}
 
-                    # Escape single quotes for key-value string safety
+                    # Escape single quotes in password for key-value string safety
                     P_ESCAPED=$(echo "$P" | sed "s/'/\\\\'/g")
 
                     if [ -n "$U" ] && [ -n "$P" ] && [ -n "$H" ]; then
