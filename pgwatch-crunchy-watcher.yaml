@@ -34,17 +34,22 @@ spec:
               EOF
 
                 if [ -n "$TIMO03T_TOKEN" ]; then
-                  REMOTE_SECRETS=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secrets -n dev -l postgres-operator.crunchydata.com/cluster -o name 2>/dev/null | grep 'pguser')
+                  # 1. Fetch ALL secrets in a single API call (~1 second)
+                  kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 \
+                    --token="$TIMO03T_TOKEN" \
+                    --insecure-skip-tls-verify \
+                    get secrets -n dev -l postgres-operator.crunchydata.com/cluster -o json > /tmp/all_secrets.json 2>/dev/null
 
-                  for SEC_NAME in $REMOTE_SECRETS; do
-                    SEC=$(echo "$SEC_NAME" | cut -d/ -f2)
-                    NS="dev"
+                  # 2. Extract -pguser- secrets and parse local JSON
+                  jq -c '.items[] | select(.metadata.name | contains("-pguser-"))' /tmp/all_secrets.json 2>/dev/null | while read -r item; do
+                    SEC=$(echo "$item" | jq -r '.metadata.name')
+                    NS=$(echo "$item" | jq -r '.metadata.namespace')
 
-                    U=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secret "$SEC" -n "$NS" -o jsonpath='{.data.user}' 2>/dev/null | base64 -d 2>/dev/null)
-                    P=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secret "$SEC" -n "$NS" -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null)
-                    H=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secret "$SEC" -n "$NS" -o jsonpath='{.data.host}' 2>/dev/null | base64 -d 2>/dev/null)
-                    PORT=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secret "$SEC" -n "$NS" -o jsonpath='{.data.port}' 2>/dev/null | base64 -d 2>/dev/null)
-                    DB=$(kubectl --server=https://api.timo03t.sbb-aws-test.net:6443 --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify get secret "$SEC" -n "$NS" -o jsonpath='{.data.dbname}' 2>/dev/null | base64 -d 2>/dev/null)
+                    U=$(echo "$item" | jq -r '.data.user // ""' | base64 -d 2>/dev/null)
+                    P=$(echo "$item" | jq -r '.data.password // ""' | base64 -d 2>/dev/null)
+                    H=$(echo "$item" | jq -r '.data.host // ""' | base64 -d 2>/dev/null)
+                    PORT=$(echo "$item" | jq -r '.data.port // ""' | base64 -d 2>/dev/null)
+                    DB=$(echo "$item" | jq -r '.data.dbname // ""' | base64 -d 2>/dev/null)
 
                     PORT=${PORT:-5432}
                     DB=${DB:-postgres}
@@ -67,7 +72,7 @@ spec:
                   done
                 fi
 
-                # Declarative apply prevents JSON escape errors on passwords
+                # 3. Apply ConfigMap instantaneously
                 kubectl create configmap pgwatch-sources-cm -n pgwatch \
                   --from-file=sources-dynamic.yaml=/tmp/sources-dynamic.yaml \
                   --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null
