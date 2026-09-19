@@ -37,12 +37,10 @@ spec:
                   API_URL="https://api.timo03t.sbb-aws-test.net:6443"
                   EXT_HOST="api.timo03t.sbb-aws-test.net"
 
-                  # 1. Fetch secrets with '|' delimiter (POSIX safe)
                   kubectl --server="$API_URL" --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify \
                     get secrets -n dev -l postgres-operator.crunchydata.com/cluster \
                     -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.data.user}{"|"}{.data.password}{"|"}{.data.host}{"|"}{.data.port}{"|"}{.data.dbname}{"\n"}{end}' 2>/dev/null > /tmp/raw_secrets.txt
 
-                  # 2. Fetch NodePorts with '|' delimiter
                   kubectl --server="$API_URL" --token="$TIMO03T_TOKEN" --insecure-skip-tls-verify \
                     get svc -n dev -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.spec.ports[0].nodePort}{"\n"}{end}' 2>/dev/null > /tmp/raw_services.txt
 
@@ -56,7 +54,6 @@ spec:
                     CLUSTER=$(echo "$SEC" | sed 's/-pguser-.*//')
                     USER_TAG=$(echo "$SEC" | sed 's/.*-pguser-//')
 
-                    # Extract matching NodePort using '|' separator
                     NODE_PORT=$(grep "^${CLUSTER}-np|" /tmp/raw_services.txt | cut -d'|' -f2)
 
                     if [ -n "$NODE_PORT" ]; then
