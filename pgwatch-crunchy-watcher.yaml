@@ -56,7 +56,7 @@ spec:
                     CLUSTER=$(echo "$SEC" | sed 's/-pguser-.*//')
                     USER_TAG=$(echo "$SEC" | sed 's/.*-pguser-//')
 
-                    # Extract NodePort mapped to this cluster
+                    # Match NodePort assigned to this cluster's -np service
                     NODE_PORT=$(grep "^${CLUSTER}-np"$'\t' /tmp/raw_services.txt | cut -f2)
 
                     if [ -n "$NODE_PORT" ]; then
@@ -84,7 +84,6 @@ spec:
                   done
                 fi
 
-                # 3. Declarative apply avoids special character escaping issues
                 kubectl create configmap pgwatch-sources-cm -n pgwatch \
                   --from-file=sources-dynamic.yaml=/tmp/sources-dynamic.yaml \
                   --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null
