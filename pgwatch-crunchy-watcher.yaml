@@ -13,6 +13,10 @@ spec:
       labels:
         app: pgwatch-crunchy-watcher
     spec:
+      hostAliases:
+        - ip: "10.241.44.228"
+          hostnames:
+            - "api.timo03t.sbb-aws-test.net"
       containers:
         - name: watcher
           image: bitnami/kubectl:latest
