@@ -17,6 +17,7 @@ spec:
         - ip: "10.241.44.228"
           hostnames:
             - "api.timo03t.sbb-aws-test.net"
+            - "pgwatch-metrics-dev.apps.timo03t.sbb-aws-test.net"
       containers:
         - name: watcher
           image: bitnami/kubectl:latest
