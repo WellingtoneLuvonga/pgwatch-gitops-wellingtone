@@ -9,7 +9,6 @@ spec:
   scheme: HTTPS
   scrapeInterval: 30s
   scrapeTimeout: 30s
-  enableHttp2: false
   tlsConfig:
     insecureSkipVerify: true
   staticConfigs:
