@@ -4,7 +4,7 @@ metadata:
   name: pgwatch-crunchy-timo03t-dev
   namespace: monitoring
   labels:
-    release: prometheus
+    release: prometheus-stack
 spec:
   scheme: HTTPS
   tlsConfig:
