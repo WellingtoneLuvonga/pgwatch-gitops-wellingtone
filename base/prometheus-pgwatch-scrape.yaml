@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: pgwatch-crunchy-timo03t-dev
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  scheme: HTTPS
+  tlsConfig:
+    insecureSkipVerify: true
+  staticConfigs:
+    - targets:
+        - "pgwatch-metrics-dev.apps.timo03t.sbb-aws-test.net:443"
+      labels:
+        environment: dev
+        cluster: timo03t
+        job: pgwatch-crunchy-exporter
