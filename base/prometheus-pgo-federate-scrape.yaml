@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: prometheus-pgo-federate-scrape
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  scheme: HTTPS
+  metricsPath: /federate
+  params:
+    'match[]':
+      - '{job=~".*"}'
+  scrapeInterval: 30s
+  scrapeTimeout: 30s
+  tlsConfig:
+    insecureSkipVerify: true
+  staticConfigs:
+    - targets:
+        - "prometheus-timo-pgo-dbms.preprod.sbb-cloud.net:443"
+      labels:
+        environment: dev
+        cluster: timo03t
+        job: pgo-prometheus-federation
