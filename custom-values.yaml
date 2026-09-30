@@ -40,7 +40,15 @@ pgwatch:
   sources:
     files:
       sources.yaml: |
-        []
+        - name: POSTGRES_ALPHA_CONN
+          conn_str: ${POSTGRES_ALPHA_CONN}
+          preset_metrics: full
+          is_enabled: true
+          custom_tags:
+            region: localhost
+            customer: ALPHA_CONN
+            role: primary
+            region: us-east-1
 
   # Inject the secret keys as environment variables into the pod
   envFrom:
