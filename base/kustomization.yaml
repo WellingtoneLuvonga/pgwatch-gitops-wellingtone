@@ -3,5 +3,3 @@ kind: Kustomization
 
 resources:
   - prometheus-rules.yaml
-  - prometheus-pgwatch-scrape.yaml
-  - prometheus-pgo-federate-scrape.yaml
