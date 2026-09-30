@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - prometheus-pgo-federate-scrape.yaml
   - prometheus-pgwatch-scrape.yaml
+  - prometheus-db05t-scrape.yaml
