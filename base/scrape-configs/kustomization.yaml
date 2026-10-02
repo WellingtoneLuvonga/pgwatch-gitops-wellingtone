@@ -3,4 +3,3 @@ kind: Kustomization
 
 resources:
   - prometheus-pgo-federate-scrape.yaml
-  - prometheus-timo03t-scrape.yaml
