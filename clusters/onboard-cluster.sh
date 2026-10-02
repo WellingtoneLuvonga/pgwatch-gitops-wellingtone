@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-# Dynamically locate repository root (looks in current dir or parent dir for base/scrape-configs)
 CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -d "${CUR_DIR}/base/scrape-configs" ]; then
   REPO_ROOT="${CUR_DIR}"
@@ -196,28 +195,34 @@ spec:
               done
 EOF
 
-# 4. Patch Prometheus Host Aliases (Idempotent Merge)
+# 4. Patch Prometheus Host Aliases
 echo "[4/6] Patching Prometheus DNS Host Aliases..."
 API_HOST=$(echo ${API_URL} | sed -E 's|https://([^:]+):.*|\1|')
-
 CURRENT_ALIASES=$(kubectl get prometheus prometheus-stack-kube-prom-prometheus -n monitoring -o json 2>/dev/null | jq '.spec.hostAliases // []')
 
-# Remove existing entries for API_HOST / METRICS_HOST if present, then append fresh IPs
+JQ_FILTER='map(select(.hostnames[] | (contains($api_host) or contains($ing_host) or ($pgo_host != "" and contains($pgo_host))) | not)) + [{"ip": $api_ip, "hostnames": [$api_host]}, {"ip": $ing_ip, "hostnames": [$ing_host]}]'
+
+if [ -n "$PGO_FEDERATE_HOST" ] && [ -n "$PGO_FEDERATE_IP" ]; then
+  JQ_FILTER="$JQ_FILTER + [{\"ip\": \$pgo_ip, \"hostnames\": [\$pgo_host]}]"
+fi
+
 UPDATED_ALIASES=$(echo "$CURRENT_ALIASES" | jq \
   --arg api_ip "$API_IP" --arg api_host "$API_HOST" \
   --arg ing_ip "$INGRESS_IP" --arg ing_host "$METRICS_HOST" \
-  'map(select(.hostnames[] | contains($api_host) or contains($ing_host) | not)) + [{"ip": $api_ip, "hostnames": [$api_host]}, {"ip": $ing_ip, "hostnames": [$ing_host]}]')
+  --arg pgo_ip "${PGO_FEDERATE_IP:-}" --arg pgo_host "${PGO_FEDERATE_HOST:-}" \
+  "$JQ_FILTER")
 
 kubectl patch prometheus prometheus-stack-kube-prom-prometheus -n monitoring --type='merge' \
   -p "{\"spec\":{\"hostAliases\": $UPDATED_ALIASES}}"
 
-# Force rollout restart so Prometheus pods reload /etc/hosts immediately
 kubectl rollout restart statefulset/prometheus-prometheus-stack-kube-prom-prometheus -n monitoring
 
-# 5. Create Prometheus ScrapeConfig
+# 5. Create Prometheus ScrapeConfigs (pgwatch + optional PGO federation)
 echo "[5/6] Creating Prometheus ScrapeConfig..."
 SCRAPE_FILE="${REPO_ROOT}/base/scrape-configs/prometheus-${CLUSTER_NAME}-scrape.yaml"
 KUSTOMIZE_FILE="${REPO_ROOT}/base/scrape-configs/kustomization.yaml"
+
+rm -f "${REPO_ROOT}/base/scrape-configs/"*"${CLUSTER_NAME}"*.yaml
 
 cat <<EOF > "$SCRAPE_FILE"
 apiVersion: monitoring.coreos.com/v1alpha1
@@ -242,13 +247,42 @@ spec:
         job: pgwatch-crunchy-exporter
 EOF
 
+if [ -n "$PGO_FEDERATE_HOST" ]; then
+  cat <<EOF >> "$SCRAPE_FILE"
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: prometheus-pgo-federate-${CLUSTER_NAME}-dev
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  scheme: HTTPS
+  metricsPath: /federate
+  scrapeInterval: 30s
+  scrapeTimeout: 15s
+  params:
+    'match[]':
+      - '{job=~".*"}'
+  tlsConfig:
+    insecureSkipVerify: true
+  staticConfigs:
+    - targets:
+        - "${PGO_FEDERATE_HOST}:443"
+      labels:
+        environment: ${REMOTE_NAMESPACE}
+        cluster: ${CLUSTER_NAME}
+        job: pgo-prometheus-federation
+EOF
+fi
+
 if ! grep -q "resources:" "$KUSTOMIZE_FILE"; then
   echo "resources:" >> "$KUSTOMIZE_FILE"
 fi
 
-if ! grep -q "prometheus-${CLUSTER_NAME}-scrape.yaml" "$KUSTOMIZE_FILE"; then
-  echo "  - prometheus-${CLUSTER_NAME}-scrape.yaml" >> "$KUSTOMIZE_FILE"
-fi
+sed -i "/${CLUSTER_NAME}/d" "$KUSTOMIZE_FILE"
+echo "  - prometheus-${CLUSTER_NAME}-scrape.yaml" >> "$KUSTOMIZE_FILE"
 
 awk '!seen[$0]++' "$KUSTOMIZE_FILE" > /tmp/kust.yaml && mv /tmp/kust.yaml "$KUSTOMIZE_FILE"
 
