@@ -242,9 +242,15 @@ spec:
         job: pgwatch-crunchy-exporter
 EOF
 
+if ! grep -q "resources:" "$KUSTOMIZE_FILE"; then
+  echo "resources:" >> "$KUSTOMIZE_FILE"
+fi
+
 if ! grep -q "prometheus-${CLUSTER_NAME}-scrape.yaml" "$KUSTOMIZE_FILE"; then
   echo "  - prometheus-${CLUSTER_NAME}-scrape.yaml" >> "$KUSTOMIZE_FILE"
 fi
+
+awk '!seen[$0]++' "$KUSTOMIZE_FILE" > /tmp/kust.yaml && mv /tmp/kust.yaml "$KUSTOMIZE_FILE"
 
 kubectl apply -k "${REPO_ROOT}/base/scrape-configs/"
 

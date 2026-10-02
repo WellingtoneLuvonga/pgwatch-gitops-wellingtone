@@ -38,19 +38,19 @@ kubectl delete secret "${CLUSTER_NAME}-dev-token" -n pgwatch --ignore-not-found
 
 # 3. Remove ScrapeConfig Manifests & Local Git File
 echo "[3/5] Cleaning up Prometheus ScrapeConfig..."
-kubectl delete scrapeconfig "pgwatch-crunchy-${CLUSTER_NAME}-dev" -n monitoring --ignore-not-found
 
-SCRAPE_FILE="${REPO_ROOT}/base/scrape-configs/prometheus-${CLUSTER_NAME}-scrape.yaml"
+# Remove any scrape YAML files containing the cluster name from disk
+rm -f "${REPO_ROOT}/base/scrape-configs/"*"${CLUSTER_NAME}"*.yaml
+
+# Remove references from kustomization.yaml and apply changes to GitOps base
 KUSTOMIZE_FILE="${REPO_ROOT}/base/scrape-configs/kustomization.yaml"
-
-if [ -f "$SCRAPE_FILE" ]; then
-  rm -f "$SCRAPE_FILE"
-fi
-
 if [ -f "$KUSTOMIZE_FILE" ]; then
-  sed -i "/prometheus-${CLUSTER_NAME}-scrape.yaml/d" "$KUSTOMIZE_FILE"
+  sed -i "/${CLUSTER_NAME}/d" "$KUSTOMIZE_FILE"
   kubectl apply -k "${REPO_ROOT}/base/scrape-configs/" || true
 fi
+
+# Delete the CR resource from Kubernetes AFTER Kustomize apply to prevent resurrection
+kubectl delete scrapeconfig "pgwatch-crunchy-${CLUSTER_NAME}-dev" -n monitoring --ignore-not-found
 
 # 4. Clean up Prometheus Host Aliases & Restart Pod
 echo "[4/5] Removing DNS hostAliases from Prometheus..."

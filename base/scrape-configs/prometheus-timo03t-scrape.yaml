@@ -8,7 +8,7 @@ metadata:
 spec:
   scheme: HTTPS
   scrapeInterval: 30s
-  scrapeTimeout: 30s
+  scrapeTimeout: 15s
   tlsConfig:
     insecureSkipVerify: true
   staticConfigs:
