@@ -20,6 +20,7 @@ source "$1"
 
 echo "=================================================="
 echo " Onboarding Cluster: ${CLUSTER_NAME}"
+echo " Customer: ${CUSTOMER_NAME:-unassigned}"
 echo "=================================================="
 
 # 1. Create Secret in Minikube
@@ -217,12 +218,13 @@ kubectl patch prometheus prometheus-stack-kube-prom-prometheus -n monitoring --t
 
 kubectl rollout restart statefulset/prometheus-prometheus-stack-kube-prom-prometheus -n monitoring
 
-# 5. Create Prometheus ScrapeConfigs (pgwatch + optional PGO federation)
-echo "[5/6] Creating Prometheus ScrapeConfig..."
-SCRAPE_FILE="${REPO_ROOT}/base/scrape-configs/prometheus-${CLUSTER_NAME}-scrape.yaml"
-KUSTOMIZE_FILE="${REPO_ROOT}/base/scrape-configs/kustomization.yaml"
+# 5. Generate Manifests & Sync to Git for ArgoCD
+echo "[5/6] Generating ScrapeConfig and syncing to Git..."
+SCRAPE_DIR="${REPO_ROOT}/base/scrape-configs"
+SCRAPE_FILE="${SCRAPE_DIR}/prometheus-${CLUSTER_NAME}-scrape.yaml"
+KUSTOMIZE_FILE="${SCRAPE_DIR}/kustomization.yaml"
 
-rm -f "${REPO_ROOT}/base/scrape-configs/"*"${CLUSTER_NAME}"*.yaml
+rm -f "${SCRAPE_DIR}/"*"${CLUSTER_NAME}"*.yaml
 
 cat <<EOF > "$SCRAPE_FILE"
 apiVersion: monitoring.coreos.com/v1alpha1
@@ -244,6 +246,7 @@ spec:
       labels:
         environment: ${REMOTE_NAMESPACE}
         cluster: ${CLUSTER_NAME}
+        customer: ${CUSTOMER_NAME:-unassigned}
         job: pgwatch-crunchy-exporter
 EOF
 
@@ -273,20 +276,27 @@ spec:
       labels:
         environment: ${REMOTE_NAMESPACE}
         cluster: ${CLUSTER_NAME}
+        customer: ${CUSTOMER_NAME:-unassigned}
         job: pgo-prometheus-federation
 EOF
 fi
 
-if ! grep -q "resources:" "$KUSTOMIZE_FILE"; then
-  echo "resources:" >> "$KUSTOMIZE_FILE"
-fi
+# Rebuild kustomization.yaml cleanly based on all active scrape files
+ALL_FILES=$(find "${SCRAPE_DIR}" -maxdepth 1 -name "prometheus-*.yaml" -exec basename {} \; 2>/dev/null | sort || true)
 
-sed -i "/${CLUSTER_NAME}/d" "$KUSTOMIZE_FILE"
-echo "  - prometheus-${CLUSTER_NAME}-scrape.yaml" >> "$KUSTOMIZE_FILE"
+cat <<EOF > "$KUSTOMIZE_FILE"
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+EOF
+for file in $ALL_FILES; do
+  echo "  - $file" >> "$KUSTOMIZE_FILE"
+done
 
-awk '!seen[$0]++' "$KUSTOMIZE_FILE" > /tmp/kust.yaml && mv /tmp/kust.yaml "$KUSTOMIZE_FILE"
-
-kubectl apply -k "${REPO_ROOT}/base/scrape-configs/"
+# Commit and push changes so ArgoCD applies them automatically
+git -C "${REPO_ROOT}" add base/scrape-configs/
+git -C "${REPO_ROOT}" commit -m "onboard: add scrape configs for ${CLUSTER_NAME}" || true
+git -C "${REPO_ROOT}" push origin main
 
 # 6. Verification Test
 echo "[6/6] Verifying endpoint availability..."

@@ -35,31 +35,53 @@ echo "[2/5] Cleaning up Minikube discovery watcher and token secret..."
 kubectl delete deployment "pgwatch-crunchy-watcher-${CLUSTER_NAME}" -n pgwatch --ignore-not-found
 kubectl delete secret "${CLUSTER_NAME}-dev-token" -n pgwatch --ignore-not-found
 
-# 3. Remove ScrapeConfig Manifests & Local Git File
-echo "[3/5] Cleaning up Prometheus ScrapeConfigs..."
+# 3. Clean ScrapeConfig Manifests & Push Deletion to Git (ArgoCD Auto-Prunes)
+echo "[3/5] Cleaning up Git manifests for ArgoCD auto-pruning..."
 
-rm -f "${REPO_ROOT}/base/scrape-configs/"*"${CLUSTER_NAME}"*.yaml
+SCRAPE_DIR="${REPO_ROOT}/base/scrape-configs"
+KUSTOMIZE_FILE="${SCRAPE_DIR}/kustomization.yaml"
 
-KUSTOMIZE_FILE="${REPO_ROOT}/base/scrape-configs/kustomization.yaml"
-if [ -f "$KUSTOMIZE_FILE" ]; then
-  sed -i "/${CLUSTER_NAME}/d" "$KUSTOMIZE_FILE"
-  kubectl apply -k "${REPO_ROOT}/base/scrape-configs/" || true
+# Delete cluster scrape file
+rm -f "${SCRAPE_DIR}/"*"${CLUSTER_NAME}"*.yaml
+
+# Rebuild kustomization.yaml cleanly based on remaining files
+REMAINING_FILES=$(find "${SCRAPE_DIR}" -maxdepth 1 -name "prometheus-*.yaml" -exec basename {} \; 2>/dev/null || true)
+
+if [ -z "$REMAINING_FILES" ]; then
+  cat <<EOF > "$KUSTOMIZE_FILE"
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: []
+EOF
+else
+  cat <<EOF > "$KUSTOMIZE_FILE"
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+EOF
+  for file in $REMAINING_FILES; do
+    echo "  - $file" >> "$KUSTOMIZE_FILE"
+  done
 fi
 
-# Delete both ScrapeConfig CRs from Kubernetes AFTER Kustomize apply
-kubectl delete scrapeconfig "pgwatch-crunchy-${CLUSTER_NAME}-dev" -n monitoring --ignore-not-found
-kubectl delete scrapeconfig "prometheus-pgo-federate-${CLUSTER_NAME}-dev" -n monitoring --ignore-not-found
+git -C "${REPO_ROOT}" add base/scrape-configs/
+git -C "${REPO_ROOT}" commit -m "offboard: remove scrape configs for ${CLUSTER_NAME}" || true
+git -C "${REPO_ROOT}" push origin main
 
 # 4. Clean up Prometheus Host Aliases & Restart Pod
 echo "[4/5] Removing DNS hostAliases from Prometheus..."
-CURRENT_ALIASES=$(kubectl get prometheus prometheus-stack-kube-prom-prometheus -n monitoring -o jsonpath='{.spec.hostAliases}')
+CURRENT_ALIASES=$(kubectl get prometheus prometheus-stack-kube-prom-prometheus -n monitoring -o json 2>/dev/null | jq '.spec.hostAliases // []')
 
-if [ -n "$CURRENT_ALIASES" ] && [ "$CURRENT_ALIASES" != "null" ]; then
+if [ -n "$CURRENT_ALIASES" ] && [ "$CURRENT_ALIASES" != "[]" ]; then
   UPDATED_ALIASES=$(echo "$CURRENT_ALIASES" | jq \
     --arg api "$API_HOST" \
     --arg metrics "$METRICS_HOST" \
     --arg pgo "${PGO_FEDERATE_HOST:-}" \
-    'map(select(.hostnames[] | (contains($api) or contains($metrics) or ($pgo != "" and contains($pgo))) | not))')
+    '([.[]? | .ip as $ip | .hostnames[]? | {ip: $ip, host: .}]
+      | map(select(.host | (contains($api) or contains($metrics) or ($pgo != "" and contains($pgo))) | not))
+     )
+     | group_by(.ip)
+     | map({ip: .[0].ip, hostnames: [.[].host] | unique})')
   
   kubectl patch prometheus prometheus-stack-kube-prom-prometheus -n monitoring --type='merge' \
     -p "{\"spec\":{\"hostAliases\": $UPDATED_ALIASES}}"
@@ -73,6 +95,7 @@ sleep 3
 HTTP_CODE=$(curl -k -o /dev/null -s -w "%{http_code}" "https://${METRICS_HOST}/metrics" || echo "000")
 
 echo "=================================================="
-echo " OFFBOARDING COMPLETE: Cluster ${CLUSTER_NAME} removed."
+echo " OFFBOARDING COMPLETE: Cluster ${CLUSTER_NAME} offboarded."
 echo " Endpoint status post-cleanup: HTTP ${HTTP_CODE} (Expected: 503 or 000/timeout)"
+echo " ArgoCD will auto-prune ScrapeConfig resources upon syncing with Git."
 echo "=================================================="

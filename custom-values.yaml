@@ -49,6 +49,15 @@ pgwatch:
             role: primary
             region: us-east-1
 
+        - name: POSTGRES_BETA_CONN
+          conn_str: ${POSTGRES_BETA_CONN}
+          preset_metrics: full
+          is_enabled: true
+          custom_tags:
+            customer: BETA_CONN
+            role: primary
+            region: us-west-1
+
   # Inject the secret keys as environment variables into the pod
   envFrom:
     - secretRef:
