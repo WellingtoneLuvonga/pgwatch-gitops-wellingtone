@@ -17,6 +17,7 @@ spec:
       labels:
         environment: dev
         cluster: timo03t
+        customer: SBB
         job: pgwatch-crunchy-exporter
 ---
 apiVersion: monitoring.coreos.com/v1alpha1
@@ -42,4 +43,5 @@ spec:
       labels:
         environment: dev
         cluster: timo03t
+        customer: SBB
         job: pgo-prometheus-federation
