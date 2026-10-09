@@ -15,7 +15,7 @@ spec:
     - targets:
         - "pgwatch-metrics-dev.apps.timo03t.sbb-aws-test.net:443"
       labels:
-        environment: dev
+        environment: prod
         cluster: timo03t
         customer: SBB
         job: pgwatch-crunchy-exporter
@@ -41,7 +41,7 @@ spec:
     - targets:
         - "prometheus-timo-pgo-dbms.preprod.sbb-cloud.net:443"
       labels:
-        environment: dev
+        environment: prod
         cluster: timo03t
         customer: SBB
         job: pgo-prometheus-federation
