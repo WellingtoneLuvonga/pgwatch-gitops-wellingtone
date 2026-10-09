@@ -18,9 +18,12 @@ fi
 
 source "$1"
 
+ENV="${TARGET_ENV:-staging}"
+
 echo "=================================================="
 echo " Onboarding Cluster: ${CLUSTER_NAME}"
 echo " Customer: ${CUSTOMER_NAME:-unassigned}"
+echo " Target Environment: ${ENV}"
 echo "=================================================="
 
 # 1. Create Secret in Minikube
@@ -219,11 +222,12 @@ kubectl patch prometheus prometheus-stack-kube-prom-prometheus -n monitoring --t
 kubectl rollout restart statefulset/prometheus-prometheus-stack-kube-prom-prometheus -n monitoring
 
 # 5. Generate Manifests & Sync to Git for ArgoCD
-echo "[5/6] Generating ScrapeConfig and syncing to Git..."
-SCRAPE_DIR="${REPO_ROOT}/base/scrape-configs"
+echo "[5/6] Generating ScrapeConfig and syncing to Git (${ENV})..."
+SCRAPE_DIR="${REPO_ROOT}/base/scrape-configs/${ENV}"
 SCRAPE_FILE="${SCRAPE_DIR}/prometheus-${CLUSTER_NAME}-scrape.yaml"
 KUSTOMIZE_FILE="${SCRAPE_DIR}/kustomization.yaml"
 
+mkdir -p "${SCRAPE_DIR}"
 rm -f "${SCRAPE_DIR}/"*"${CLUSTER_NAME}"*.yaml
 
 cat <<EOF > "$SCRAPE_FILE"
@@ -281,21 +285,29 @@ spec:
 EOF
 fi
 
-# Rebuild kustomization.yaml cleanly based on all active scrape files
+# Rebuild kustomization.yaml cleanly based on active scrape files in target environment
 ALL_FILES=$(find "${SCRAPE_DIR}" -maxdepth 1 -name "prometheus-*.yaml" -exec basename {} \; 2>/dev/null | sort || true)
 
-cat <<EOF > "$KUSTOMIZE_FILE"
+if [ -z "$ALL_FILES" ]; then
+  cat <<EOF > "$KUSTOMIZE_FILE"
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: []
+EOF
+else
+  cat <<EOF > "$KUSTOMIZE_FILE"
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 EOF
-for file in $ALL_FILES; do
-  echo "  - $file" >> "$KUSTOMIZE_FILE"
-done
+  for file in $ALL_FILES; do
+    echo "  - $file" >> "$KUSTOMIZE_FILE"
+  done
+fi
 
 # Commit and push changes so ArgoCD applies them automatically
 git -C "${REPO_ROOT}" add base/scrape-configs/
-git -C "${REPO_ROOT}" commit -m "onboard: add scrape configs for ${CLUSTER_NAME}" || true
+git -C "${REPO_ROOT}" commit -m "onboard: add scrape configs for ${CLUSTER_NAME} in ${ENV}" || true
 git -C "${REPO_ROOT}" push origin main
 
 # 6. Verification Test
@@ -305,7 +317,7 @@ HTTP_CODE=$(curl -k -o /dev/null -s -w "%{http_code}" "https://${METRICS_HOST}/m
 
 echo "=================================================="
 if [ "$HTTP_CODE" -eq 200 ]; then
-  echo " SUCCESS: Cluster ${CLUSTER_NAME} onboarded! (Endpoint HTTP 200 OK)"
+  echo " SUCCESS: Cluster ${CLUSTER_NAME} onboarded to ${ENV}! (Endpoint HTTP 200 OK)"
 else
   echo " WARNING: Endpoint returned HTTP $HTTP_CODE. Check pod rollout or DNS."
 fi

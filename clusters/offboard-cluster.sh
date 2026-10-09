@@ -18,10 +18,12 @@ fi
 
 source "$1"
 
+ENV="${TARGET_ENV:-staging}"
 API_HOST=$(echo "${API_URL}" | sed -E 's|https://([^:]+):.*|\1|')
 
 echo "=================================================="
 echo " Offboarding Cluster: ${CLUSTER_NAME}"
+echo " Environment: ${ENV}"
 echo "=================================================="
 
 # 1. Remove Remote OpenShift Exporter Stack
@@ -38,14 +40,23 @@ kubectl delete secret "${CLUSTER_NAME}-dev-token" -n pgwatch --ignore-not-found
 # 3. Clean ScrapeConfig Manifests & Push Deletion to Git (ArgoCD Auto-Prunes)
 echo "[3/5] Cleaning up Git manifests for ArgoCD auto-pruning..."
 
-SCRAPE_DIR="${REPO_ROOT}/base/scrape-configs"
+SCRAPE_DIR="${REPO_ROOT}/base/scrape-configs/${ENV}"
+
+# Fallback: locate cluster scrape file across base/scrape-configs if not in targeted ENV folder
+if [ ! -f "${SCRAPE_DIR}/prometheus-${CLUSTER_NAME}-scrape.yaml" ]; then
+  FOUND_FILE=$(find "${REPO_ROOT}/base/scrape-configs" -name "prometheus-${CLUSTER_NAME}-scrape.yaml" | head -n 1)
+  if [ -n "$FOUND_FILE" ]; then
+    SCRAPE_DIR="$(dirname "$FOUND_FILE")"
+  fi
+fi
+
 KUSTOMIZE_FILE="${SCRAPE_DIR}/kustomization.yaml"
 
 # Delete cluster scrape file
 rm -f "${SCRAPE_DIR}/"*"${CLUSTER_NAME}"*.yaml
 
 # Rebuild kustomization.yaml cleanly based on remaining files
-REMAINING_FILES=$(find "${SCRAPE_DIR}" -maxdepth 1 -name "prometheus-*.yaml" -exec basename {} \; 2>/dev/null || true)
+REMAINING_FILES=$(find "${SCRAPE_DIR}" -maxdepth 1 -name "prometheus-*.yaml" -exec basename {} \; 2>/dev/null | sort || true)
 
 if [ -z "$REMAINING_FILES" ]; then
   cat <<EOF > "$KUSTOMIZE_FILE"
