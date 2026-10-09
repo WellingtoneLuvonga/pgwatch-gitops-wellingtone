@@ -1,0 +1,47 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: pgwatch-crunchy-timo03t-dev
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  scheme: HTTPS
+  scrapeInterval: 30s
+  scrapeTimeout: 15s
+  tlsConfig:
+    insecureSkipVerify: true
+  staticConfigs:
+    - targets:
+        - "pgwatch-metrics-dev.apps.timo03t.sbb-aws-test.net:443"
+      labels:
+        environment: staging
+        cluster: timo03t
+        customer: SBB
+        job: pgwatch-crunchy-exporter
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: prometheus-pgo-federate-timo03t-dev
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  scheme: HTTPS
+  metricsPath: /federate
+  scrapeInterval: 30s
+  scrapeTimeout: 15s
+  params:
+    'match[]':
+      - '{job=~".*"}'
+  tlsConfig:
+    insecureSkipVerify: true
+  staticConfigs:
+    - targets:
+        - "prometheus-timo-pgo-dbms.preprod.sbb-cloud.net:443"
+      labels:
+        environment: staging
+        cluster: timo03t
+        customer: SBB
+        job: pgo-prometheus-federation
